@@ -2,6 +2,9 @@ import numpy as np
 import scipy.linalg
 from scipy.special import erf
 
+def status():
+    print "Success!"
+
 rootPi = np.sqrt(np.pi)
 rootTwo = np.sqrt(2.)
 rootTwoRecip = 1./rootTwo
@@ -136,7 +139,11 @@ class linODEGP:
 
  - Sort out handling of covariance functions of the form 
 
-  | k11 0   |
-  | 0   k22 |
+ |s11 s12 | | k11 0   | |s11 s21|
+ |s21 s22 | | 0   k22 | |s12 s22|
 
+  =  |s11k11 s12k22 | |s11 s21 |
+     |s21k11 s22k22 | |s12 s22 |
+
+  =  |s11*s11*k11 + s12*s12*k22  s12*s21*k11 + 
 """
