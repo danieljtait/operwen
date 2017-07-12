@@ -78,6 +78,29 @@ def TwiceIntegratedSEKernel(S, T,
     
     return c_scalePar*Const1*Const2*(expr1 - expr2)
 
+
+class SquareExpKernel:
+    def __init__(self, cscales, lscales):
+        self.cscales = cscales
+        self.lscales = lscales
+        self.dim = len(cscales)
+
+    def sek_(self,s,t,c,l):
+        return c*np.exp(-0.5*(s-t)**2/(l*l))
+
+    def __call__(self, ss, tt):
+        if self.dim == 1:
+            return self.sek_(s,t,self.cscales[0], self.lscales[0])
+        else:
+            res = np.zeros((ss.size*self.dim, tt.size*self.dim))
+            for i in range(ss.size):
+                for j in range(i+1):
+                    kval = np.diag([self.sek_(ss[i],tt[j],c,l) for (c,l) in zip(self.cscales,self.lscales)])
+                    res[i*self.dim:(i+1)*self.dim, j*self.dim:(j+1)*self.dim] = res[j*self.dim:(j+1)*self.dim,i*self.dim:(i+1)*self.dim] = kval
+            return res
+                    
+
+
 ################################################################
 # Gaussian Process representation of the process defined       #
 # by                                                           #
@@ -103,6 +126,15 @@ class linODEGP:
         self.initTime = initTime
         self.initValue = initValue
 
+    def setKernel(self,kpar,ktype='sq_exp_kern'):
+        if(ktype == 'sq_exp_kern'):
+            self.ktype = 'sq_exp_kern'
+            self.setKernel_sq_exp_kern(kpar)
+
+    def setKernel_sq_exp_kern(self, kpar):
+        self.cscales = kpar[0]
+        self.lscales = kpar[1]
+        
     def integratedCovarksqExp(self, s, t):
         D = self.dim
         # Use numpy's complex data type for safe broadcasting
@@ -118,7 +150,7 @@ class linODEGP:
             # Ignore components of state variable with no latent
             # force function
             if self.cscales[k] != 0:
-                if self.complexDtype:
+                if complexDtype:
                     C = np.zeros((D, D), dtype=complex)
                 else:
                     C = np.zeros((D, D))
@@ -126,11 +158,28 @@ class linODEGP:
                 for i in range(D):
                     for j in range(D):
                         C[i, j] = TwiceIntegratedSEKernel(s, t,
-                                                          self.Aeigval[i], self.AeigVal[j],
+                                                          self.Aeigval[i], self.Aeigval[j],
                                                           self.lscales[k], self.cscales[k],
                                                           self.initTime, self.initTime)
                         C[i, j] *= self.Uinv[i, k]*self.Uinv[j, k]
                 res += C
+        if complexDtype:
+            return np.real(np.dot(self.U, np.dot(res, self.U.T)))
+        else:
+            return np.dot(self.U, np.dot(res, self.U.T))
+
+    def makeCov(self, tt):
+        D = self.dim
+        if self.ktype == 'sq_exp_kern':
+            Cov = np.zeros((tt.size*D, tt.size*D))
+            for i in range(tt.size):
+                for j in range(i+1):
+                    k = self.integratedCovarksqExp(tt[i], tt[j])
+                    Cov[i*D:(i+1)*D, j*D:(j+1)*D] = k
+                    Cov[j*D:(j+1)*D, i*D:(i+1)*D] = k.T
+            return Cov
+
+
 
 
 """
