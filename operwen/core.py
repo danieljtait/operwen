@@ -50,8 +50,13 @@ def IntegratedSEKernel(t, S, d1, s0, l_scalePar, c_scalePar):
 #                                                              #
 # Requires checking [ ]                                        #
 #                                                              #
-#  - Seems corrent                                             #
+#  /S  /T                                                      #
+#  |   |    d1(S-s)        d2(T-t)                             #
+#  |   |   e       k(s,t)  e      dsdt                         #
+#  /s0 /t0                                                     #
 #                                                              #
+#  - where k(s,t) is the common parameterisation of the        #
+#    squared exponential kernel                                #
 ################################################################
 def TwiceIntegratedSEKernel(S, T,
                             d1, d2,
@@ -180,8 +185,37 @@ class linODEGP:
             return Cov
 
 
+################################################################
+# Gaussian Process representation of the process defined       #
+# by                                                           #
+#                                                              #
+#                      dX/dt = A(t)X + g(t)                    #
+#                                                              #
+# where g(t) is a Gaussian Process                             #
+################################################################
 
+class tvlinODEGP:
+    def __init__(self, A, initValue, initTime,
+                 AtType='func', At_tknots = None, At_eval=None):
+        self.x0 = initValue
+        self.t0 = initTime
+        self.dim = initValue.size
 
+    def mean(self, t):
+        pass 
+        # the recursive definition of exponential matrix
+        # needs to be sped up
+
+    # Set kernel, if A(t) is rapidly varying then we may carry out
+    # numerical differentiation of the kernel for no additional cost
+    # else if A(t) is constant over long intervals we either need to
+    # subpartition the numerical integration routine or better
+    # provide analytically integrable covariance functions 
+    def setKernel(self, kernel, kpar, ktype='userSupplied'):
+        self.kernel = kernel
+        self.kpar = kpar
+        self.ktype=ktype
+        
 """
 
 ============= TO DO ===============
