@@ -195,12 +195,39 @@ class linODEGP:
 ################################################################
 
 class tvlinODEGP:
-    def __init__(self, A, initValue, initTime,
+    def __init__(self, At, initValue, initTime,
                  AtType='func', At_tknots = None, At_eval=None):
         self.x0 = initValue
         self.t0 = initTime
         self.dim = initValue.size
 
+        self.At = At
+        self.tknots = At_tknots
+
+    def fit(self, Data, InputTimes):
+        self.evalt = InputTimes
+        self.G_time_setup()
+
+    ##
+    # G variables are ordered as
+    #  [ G(max(tk < t_i ) ) i in evalt 
+    def G_time_setup(self):
+        tta = []
+        ttb = []
+        Att = []
+        for t in self.evalt:
+            tau = self.tknots[self.tknots < t][-1]
+            tta.append(tau)
+            ttb.append(t)
+            Att.append(self.At(0.5*(tau+t)))
+        for i in range(self.tknots.size-1):
+            tta.append(self.tknots[i])
+            ttb.append(self.tknots[i+1])
+            Att.append(self.At(0.5*(self.tknots[i]+self.tknots[i+1])))
+        self.tta = tta
+        self.ttb = ttb
+        self.Att = Att
+        
     def mean(self, t):
         pass 
         # the recursive definition of exponential matrix
