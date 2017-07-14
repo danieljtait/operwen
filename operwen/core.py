@@ -216,6 +216,110 @@ class tvlinODEGP:
         self.kpar = kpar
         self.ktype=ktype
         
+
+# ===================================================================================================== #
+
+def MaketvcTransformationMatrix(tt, tk, At, dim=1):
+    NG = sum(tk < tt[-1]) - 1
+    Ndata = tt.size
+
+    ts = []
+    ss = tk[1:]
+
+    if dim==1:
+        for nt in range(Ndata):
+
+            # This could be improved because tt is sorted and so there is a redundant
+            tsNew = [sval for sval in ss[nts:] if sval < tt[nt]]
+            ts = np.concatenate((ts, tsNew))
+
+            nts += len(tsNew)
+            SS = np.concatenate((ts, [tt[nt]]))
+
+            k = SS.size - 1
+            T[nt, :k] = np.ones(k)
+
+            for j in range(k):
+                ta = SS[j]
+                tb = SS[j+1]
+                ea = np.exp(At(0.5*(ta+tb))*(tb-ta))
+                T[nt, :j+1] *= ea
+
+    else:
+        Id = np.diag(np.ones(dim))
+        for nt in range(Ndata):
+            tsNew = [sval for sval in ss[nts:] if sval < tt[nt]]
+            ts = np.concatenate((ts, tsNew))
+
+            nts += len(tsNew)
+            SS = np.concatenate((ts, [tt[nt]]))
+
+            k = SS.size - 1
+
+            T[nt*dim:(nt+1)*dim, :(k+1)*dim] = [Id for k_ in range(k)]
+
+            for j in range(k):
+                ta = SS[j]
+                tb = SS[j+1]
+                ea = scipy.linalg.expm(At(0.5*(ta+tb))*(tb-ta))
+
+                T[nt*dim:(nt+1)*dim, :(j+1)*dim] = [np.dot(ea, M) for M in T[nt*dim:(nt+1)*dim, :(j+1)*dim]]
+
+    return T
+
+################################################################
+#                                                              #
+# approximates the covariance given by                         #
+#                                                              #
+#                /   /  As(sb-s)         At(tb-t)              #
+# Cov(Gs, Gt ) = |   | e         k(s,t) e         dsdt         #
+#                /sa /ta                                       #
+#                                                              #
+# under the assumption that everywhere tb-ta is small so that  #
+# the double integral can be replaced by a quadrature rule     #
+#                                                              #
+################################################################
+def NumDblIntQuad(tta, Att, ttb, kernel):
+    ttm = 0.5*(tta + ttb)
+
+    I1 = Idblvec_ls(tta, tta, Att, ttb, kernel)
+    I2 = Idblvec_ls(ttm, tta, Att, ttb, kernel)
+    I3 = Idblvec_ls(ttb, tta, Att, ttb, kernel)
+
+    ea1 = np.exp(Att*(ttb-tta))
+    ea2 = np.exp(Att*0.5*(ttb-tta))
+    for i in range(tta.size):
+        I1[:,i] *= ea1
+        I2[:,i] *= ea2
+        I1[i,:] *= (ttb[i]-tta[i])
+        I2[i,:] *= (ttb[i]-tta[i])
+        I3[i,:] *= (ttb[i]-tta[i])
+
+    return (I1 + 4*I2 + I3)/6.
+
+def Idblvec(ss, tta, As, ttb, kernel):
+    w1 = J1vec(ss, tta, As, ttb, kernel)
+    w2 = J2vec(ss, ttm, As, ttb, kernel)
+    w3 = J3vec(ss, ttb, As, ttb, kernel)
+
+    return (ttb-tta)*(w1 + 4*w2 + w3)/6
+
+def J1vec(ss, xa, A, tb, kernel):
+    ss_, xa_ = np.meshgrid(ss, xa)
+    K = kernel(ss_.ravel(), xa_.ravel()).reshape(ss_.shape).T
+    return K*np.exp(A*(tb-xa))
+
+def J2vec(ss, xm, A, tb, kernel):
+    ss_, xm_ = np.meshgrid(ss, xm)
+    K = kernel(ss_.ravel(), xm_.ravel()).reshape(ss_.shape).T
+    return K*np.exp(A*(tb-xm))
+
+def J3vec(ss, xb, A, tb, kernel):
+    ss_, xb_ = np.meshgrid(ss, xb)
+    K = kernel(ss_.ravel(), xb_.ravel()).reshape(ss_.shape).T
+    return K
+
+
 """
 
 ============= TO DO ===============
