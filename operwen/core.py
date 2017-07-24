@@ -115,6 +115,10 @@ def TwiceIntegratedSEKernel(S, T,
 ##
 # Vectorised implementation for the covariance matrix in the 
 # linear latent GP ode model with no sensitivity matrix
+#
+# To Do
+#   [ ] place the eig val check on the pre aug eigenvalues, and then ravel the resulting boolean if necessary
+# 
 def makeCovarMat_sqExpk_specDecomp_noSens_2(ss, tt,
                                             Adecomp, Bdecomp,
                                             lScales, cScales,
