@@ -1,0 +1,210 @@
+from core import TwiceIntegratedSEKernel
+import numpy as np
+import scipy.linalg
+
+A = np.random.uniform(size=9).reshape(3, 3)
+
+
+
+def makecov1(S, T,
+             Adecomp, Bdecomp,
+             lScales, cScales,
+             dim, s0, t0):
+
+    Aeig, UA, UAinv = Adecomp
+    Beig, UB, UBinv = Bdecomp
+
+    res = np.zeros((dim, dim), dtype='complex')
+
+    for k in range(dim):
+        if cScales[k] > 0:
+            C = np.zeros((dim, dim), dtype='complex')
+            for i in range(dim):
+                for j in range(dim):
+                    C[i, j] = TwiceIntegratedSEKernel(S, T,
+                                                      Aeig[i], Beig[j],
+                                                      lScales[k], cScales[k],
+                                                      s0, t0)
+                    C[i, j] *= UAinv[i, k]*UB[k, j]
+            res += C
+    return res
+
+
+def makecov2(S, T,
+             Adecomp, Bdecomp,
+             lScales, cScales,
+             dim, s0, t0):
+
+    Aeig, UA, UAinv = Adecomp
+    Beig, UB, UBinv = Bdecomp
+
+    res = np.zeros((dim, dim), dtype='complex')
+    
+    for k in range(dim):
+        if cScales[k] > 0:
+            C = np.zeros((dim, dim), dtype='complex')
+            for i in range(dim):
+                for j in range(dim):
+                    C[i, j] = TwiceIntegratedSEKernel(S, T,
+                                                      Aeig[i], Beig[j],
+                                                      lScales[k], cScales[k],
+                                                      s0, t0)
+            UAinvk = np.diag(UAinv[:,k])
+            UBk = np.diag(UB[k,:])
+            C = np.dot(UAinvk, np.dot(C, UBk))
+
+            res += C
+    return res
+
+def makecov3(S, T,
+             Adecomp, Bdecomp,
+             lScales, cScales,
+             dim, s0, t0):
+
+    Aeig, UA, UAinv = Adecomp
+    Beig, UB, UBinv = Bdecomp
+
+    res = np.zeros((dim, dim), dtype='complex')
+
+    evalB, evalA = np.meshgrid(Beig, Aeig)
+    for k in range(dim):
+        if cScales[k] > 0:
+            # ravel Aeig, Beig
+            M = TwiceIntegratedSEKernel(S, T,
+                                        evalA.ravel(), evalB.ravel(),
+                                        lScales[k], cScales[k],
+                                        s0, t0, NON_ZERO_ = True).reshape(dim, dim)
+            UAinvk = np.diag(UAinv[:,k])
+            UBk = np.diag(UB[k,:])
+            res += np.dot(UAinvk, np.dot(M, UBk))
+
+    res = np.dot(UA, np.dot(res, UBinv))
+    return res
+
+def makeCov3(ss, tt,
+             Adecomp, Bdecomp,
+             lScales, cScales,
+             dim, s0, t0):
+
+    N1 = ss.size
+    N2 = tt.size
+
+    Aeig, UA, UAinv = Adecomp
+    Beig, UB, UBinv = Bdecomp
+
+    # Expand the vectors for raveling 
+    Aeig_aug = np.array([Aeig for n in range(N1)])
+    Beig_aug = np.array([Beig for n in range(N2)])
+
+    ss_aug = np.column_stack((ss for d in range(dim) )).ravel()
+    tt_aug = np.column_stack((tt for d in range(dim) )).ravel()
+    
+    #ss_aug = np.array([ss for d in range(dim)])
+    #tt_aug = np.array([tt for d in range(dim)])
+
+    evalB, evalA = np.meshgrid(Beig_aug, Aeig_aug)
+    T_, S_  = np.meshgrid(tt_aug, ss_aug)
+
+    res = np.zeros((N1*dim, N2*dim), dtype='complex')
+
+    PreMats = []
+    PostMats = []
+    for k in range(dim):
+        pmat = np.diag(np.array( [UAinv[:,k] for n in range(N1)], dtype='complex').ravel())
+        pomat = np.diag(np.array( [UBinv[:,k] for n in range(N2)], dtype='complex').ravel()) 
+        PreMats.append( pmat )
+        PostMats.append( pomat )
+
+    PreMats2 = []
+    PostMats2 = []
+    for k in range(dim):
+        diagMat1 = np.diag(UAinv[:,k])
+        mat1 = np.dot(UA, diagMat1)
+        pmat = mat1
+        for n in range(N1-1):
+            pmat = scipy.linalg.block_diag( pmat, mat1 )
+
+        diagMat2 = np.diag(UB[k,:])
+        mat2 = np.dot(diagMat2, UBinv)
+        pomat = mat2
+        for n in range(N2-1):
+            pomat = scipy.linalg.block_diag( pomat, mat2 )
+
+        PreMats2.append(pmat)
+        PostMats2.append(pomat)
+    
+    for k in range(dim):
+        if cScales[k] > 0:
+            M = TwiceIntegratedSEKernel(S_.ravel(), T_.ravel(),
+                                        evalA.ravel(), evalB.ravel(),
+                                        lScales[k], cScales[k],
+                                        s0, t0, NON_ZERO_ = True).reshape(res.shape)
+            res += np.dot(PreMats2[k], np.dot(M, PostMats2[k] ))
+
+    return np.real(res)
+                                        
+    
+
+lScales = np.array([0.5, 1., 1.3])
+cScales = np.array([1., 1., 1.1])
+
+B = A.T
+Aeig, UA = np.linalg.eig(A)
+UAinv = np.linalg.inv(UA)
+Beig, UB = np.linalg.eig(B)
+UBinv = np.linalg.inv(UB)
+
+Adecomp = (Aeig, UA, UAinv)
+Bdecomp = (Beig, UB, UBinv)
+
+
+S = 1.
+T = 0.9
+
+SS = np.linspace(0., 10., 10000)
+
+ss = np.linspace(0.3, 0.5, 2)
+tt = np.linspace(0.1, 1., 2)
+
+#makecov3(ss[0], tt[0], Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+#covQuick = makeCov3(ss, ss, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+
+#for s in SS:
+#    makecov1(s, T, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+
+
+#for s in SS:
+#    makecov3(s, T, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+
+from core import linODEGP
+x0 = np.random.uniform(size=3)
+gp = linODEGP(A, x0, 0.)
+gp.setKernel(kpar=(cScales, lScales),
+             ktype='sq_exp_kern')
+
+#cov = gp.makeCov(ss)
+
+#print cov - covQuick
+
+
+
+#makecov1(S, T, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+#makecov2(S, T, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+#makecov3(S, T, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+#print makeCov3(np.array(S), np.array(T), Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+
+#print gp.integratedCovarksqExp(S, T)
+
+#cov1 = gp.makeCov(ss)
+#ss = np.asarray(ss[0])
+#tt = np.asarray(tt[0])
+#print gp.integratedCovarksqExp(ss[0], tt[0])
+#print ""
+
+ss = np.linspace(0., 5., 100)
+cov = gp.makeCov(ss)
+#cov = makeCov3(ss, ss, Adecomp, Bdecomp, lScales, cScales, 3, 0., 0.)
+
+cov2 = gp.makeCov_faster(ss)
+
+print np.max(cov - cov2)
