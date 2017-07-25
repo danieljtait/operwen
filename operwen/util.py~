@@ -1,0 +1,19 @@
+from scipy.stats import multivariate_normal
+
+
+class ProbabilityDistribution:
+    def __init__(self):
+        pass
+
+
+class MultivariateNormal:
+    def __init__(mean, cov):
+        self.mean = mean
+        self.cov = cov
+
+    def pdf(self, y)
+        return multivariate_normal.pdf(y, self.mean, self.cov)
+
+    def logpdf(self, y):
+        return multivariate_normal.logpdf(y, self.mean, self.cov)
+        
