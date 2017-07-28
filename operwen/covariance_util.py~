@@ -1,0 +1,8 @@
+
+
+
+###
+# Cleaner implementation of the covariance functions
+
+def cov_ij(ss, tt, i, j,
+           Adecomp, Bdecomp):

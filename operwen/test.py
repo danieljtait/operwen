@@ -208,6 +208,7 @@ tt = np.array([T])
 
 print getResult3(i, j)
 print getResult4(ss, tt, i, j)
+print getResult4(ss, tt, j, i)
 #print getResult()
 #print getResult2()
 #print getResultSlow()

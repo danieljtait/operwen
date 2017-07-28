@@ -1,0 +1,27 @@
+import numpy as np
+from core import linODEGP
+import covariance_util as covutil
+
+dim = 5
+A = np.random.uniform(size=dim*dim).reshape(dim, dim)
+S = np.random.uniform(size=dim*dim).reshape(dim, dim)
+x0 = np.random.uniform(size=dim)
+
+lScales = np.random.uniform(size=dim)
+cScales = np.random.uniform(size=dim)
+
+gp = linODEGP(A, x0, 0., True, S=S, withSens=True)
+
+Adecomp = gp.Aeigval, gp.U, gp.Uinv
+Bdecomp = gp.Aeigval, gp.Uinv.T, gp.U.T
+
+ss = np.linspace(0.5, 1., 7)
+tt = np.linspace(0.5, 1., 7)
+
+K1 = cov(ss, tt, S, Adecomp, Bdecomp, gp.dim, cScales, lScales)
+K2 = covarLinODEGP_SLF(tt, Adecomp, S, cScales, lScales)
+K3 = gp.makeCov_faster2(tt)
+
+print K3 - K1
+
+print "==========="

@@ -272,6 +272,7 @@ class SquareExpKernel:
             res = np.zeros((ss.size*self.dim, tt.size*self.dim))
             for i in range(ss.size):
                 for j in range(i+1):
+                    
                     kval = np.diag([self.sek_(ss[i],tt[j],c,l) for (c,l) in zip(self.cscales,self.lscales)])
                     res[i*self.dim:(i+1)*self.dim, j*self.dim:(j+1)*self.dim] = res[j*self.dim:(j+1)*self.dim,i*self.dim:(i+1)*self.dim] = kval
             return res
