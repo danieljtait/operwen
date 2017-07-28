@@ -185,3 +185,46 @@ def TwiceIntegratedSEKernel(S, T,
     Const2 = np.exp(0.5*d1*d1*l_scalePar*l_scalePar + d1*S)
     
     return c_scalePar*Const1*Const2*(expr1 - expr2)
+
+
+###############################
+#
+# Squared Exponential Kernel 
+#
+##############################
+def ksqexp(s, t, cScales, lScales, S=None, returnType='ind'):
+    s = np.asarray(s) 
+    t = np.asarray(t)
+
+    dim = cScales.size
+    N1 = s.size
+    N2 = t.size
+
+    if not (S.any() == None):
+        returnType = 'matrix'
+        Spre = S.copy()
+        for l in range(N1-1):
+            Spre = scipy.linalg.block_diag(Spre, S)
+        if N1 != N2:
+            Spost = S.T.copy()
+            for l in range(N2-1):
+                Spost = scipy.linalg.block_diag(Spost, S.T)
+        else:
+            Spost = Spre.T
+
+    t_, s_ = np.meshgrid(t, s)
+    
+    if returnType == 'matrix':
+        result = np.zeros((N1*dim, N2*dim))
+        rows = np.row_stack(( (nt*dim)*np.ones(N2, dtype=np.intp) for nt in range(N1) ))
+        cols = np.column_stack(( (nt*dim)*np.ones(N1, dtype=np.intp) for nt in range(N2) ))
+        for i in range(dim):
+            result[rows + i, cols + i] = cScales[i]*np.exp(-0.5*(s_.ravel()-t_.ravel())**2/lScales[i]**2).reshape((N1, N2))
+        
+        return np.dot(Spre, np.dot(result, Spost))
+    else:
+        result = []
+        for i in range(dim):
+            result.append( cScales[i]*np.exp(-0.5*(s_.ravel()-t_.ravel())**2/lScales[i]**2).reshape((N1, N2)) )
+        
+        return result
