@@ -98,3 +98,31 @@ def makeCov_sym(S, A, kernel, dim):
 
     return result
 
+def makeCovYf( S, tt, A, kernel, dim):
+    sa, sm, sb = S
+
+    N1 = sa.size
+    N2 = tt.size
+
+    K1 = kernel(sa, tt)
+    K2 = kernel(sm, tt)
+    K3 = kernel(sb, tt)
+
+    result = np.zeros((N1*dim, N2*dim))
+
+    for i in range(N1):
+
+        eAi1 = scipy.linalg.expm(A[i]*(sb[i]-sa[i]))
+        eAi2 = scipy.linalg.expm(A[i]*(sb[i]-sm[i]))
+
+        for j in range(N2):
+
+            I1 = np.dot(eAi1, K1[i*dim:(i+1)*dim, j*dim:(j+1)*dim])
+            I2 = np.dot(eAi1, K2[i*dim:(i+1)*dim, j*dim:(j+1)*dim])
+            I3 = K3[i*dim:(i+1)*dim, j*dim:(j+1)*dim]
+
+            ival = (sb[i]-sa[i])*(I1 + 4*I2 + I3)/6.
+
+            result[i*dim:(i+1)*dim, j*dim:(j+1)*dim] = ival
+
+    return result
