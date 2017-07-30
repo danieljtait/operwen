@@ -94,7 +94,7 @@ def makeCov(S, T, A, B, kernel, dim):
 
     return result
 
-
+"""
 j = Jvec_mat(tta, tta, Att, ttb, kfunc, 2)
 
 xx = np.random.uniform(size=2*4).reshape((4,2))
@@ -177,4 +177,4 @@ def result2():
 
 print ""
 result2()
-
+"""
