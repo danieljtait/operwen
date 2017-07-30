@@ -34,7 +34,7 @@ m = gp.mean(tt)
 
 ## 
 # Alternative calculuation of the covariance matrix
-tt_ = np.linspace(0.5, 1., 25)
+tt_ = np.linspace(0.5, 1., 500)
 tta = tt_[:-1]
 ttb = tt_[1:]
 Att = [A for k in range(tta.size)]

@@ -206,10 +206,46 @@ def getResult4(ss, tt, i, j):
 ss = np.array([S])
 tt = np.array([T])
 
+
+def getResult5(i, j, s, t):
+    def integrand(y, x, m, n):
+        c = np.zeros((3, 3))
+        c[i, j] = kern_ij(x, y, i, j)
+        eA = scipy.linalg.expm(A*(S-x))
+        eB = scipy.linalg.expm(B*(T-y))
+        return np.dot(eA, np.dot(c, eB))[m, n]
+
+    res = np.zeros((dim, dim))
+    for m in range(dim):
+        for n in range(dim):
+            res[m, n] = dblquad(integrand, 0., S, lambda x: 0., lambda x: T, args=(m, n))[0]
+
+    print res
+
 print getResult3(i, j)
 print getResult4(ss, tt, i, j)
-print getResult4(ss, tt, j, i)
-#print getResult()
+#print getResult4(ss, tt, j, i)
+print getResult5(i, j, S, T)
+from covariance_util import cov_ij, cov
+
+Aeigval, UA = np.linalg.eig(A)
+UAinv = np.linalg.inv(UA)
+
+Beigval, UB = np.linalg.eig(B)
+UBinv = np.linalg.inv(UB)
+
+Adecomp = (Aeigval, UA, UAinv)
+Bdecomp = (Beigval, UB, UBinv)
+print cov_ij(ss, tt, i, j, Sens, Adecomp, Bdecomp, dim, cScales, lScales)
+
+Sigma = np.zeros((dim, dim))
+for i in range(dim):
+    for j in range(dim):
+        Sigma += getResult3(i, j)
+print ""
+print Sigma
+print cov(ss, tt, Sens, Adecomp, Bdecomp, dim, cScales, lScales)
+
 #print getResult2()
 #print getResultSlow()
 
