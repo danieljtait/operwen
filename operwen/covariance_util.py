@@ -195,11 +195,14 @@ def TwiceIntegratedSEKernel(S, T,
 def ksqexp(s, t, cScales, lScales, S=None, returnType='ind'):
     s = np.asarray(s) 
     t = np.asarray(t)
+    S = np.asarray(S)
 
     dim = cScales.size
     N1 = s.size
     N2 = t.size
 
+    Spre = []
+    Spost = []
     if not (S.any() == None):
         returnType = 'matrix'
         Spre = S.copy()
@@ -221,7 +224,10 @@ def ksqexp(s, t, cScales, lScales, S=None, returnType='ind'):
         for i in range(dim):
             result[rows + i, cols + i] = cScales[i]*np.exp(-0.5*(s_.ravel()-t_.ravel())**2/lScales[i]**2).reshape((N1, N2))
         
-        return np.dot(Spre, np.dot(result, Spost))
+        if(S.any() == None):
+            return result
+        else:
+            return np.dot(Spre, np.dot(result, Spost))
     else:
         result = []
         for i in range(dim):
