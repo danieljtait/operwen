@@ -2,9 +2,30 @@ import numpy as np
 import scipy.linalg
 import core
 
+def setup(tt, tknots):
+    ttk = tknots[tknots < tt[-1]]
+    ttk_mids = ttk + np.diff(tknots[:ttk.size+1])*0.5 # These are the points at which the ODE gets solved
+    
+
+    
+def update_A_handler(tt, tknots):
+
+
+    
+    tti = tt.copy()
+    ttk = tknots[tknots < tt[-1]]
+    ttk_mids = ttk + np.diff(tknots[:ttk.size+1])*0.5  # Points at which the ode is solve
+    
+    ttSolve = np.concatenate(( tti, ttk_mids )) #
+    tt_inds = np.argsort(ttSolve)               # 
+    
+    tti_ind = 
+
+    
+
 def getCov(tt, tk, At,
-        cScales, lScales, dim, s0, t0,
-        rescale=True):
+           cScales, lScales, dim, s0, t0,
+           rescale=False):
     
     tt_ = np.concatenate((tt, tk[tk < tt[-1]][1:] ))
     Ati, Atk = setup_(tt, tk, At)
@@ -100,3 +121,11 @@ def make_T_matrix( Ati, Atk, tt, tk, dim):
                 result[i*dim:(i+1)*dim, k*dim:(k+1)*dim] = np.dot( eAi, result[i*dim:(i+1)*dim, k*dim:(k+1)*dim] )
 
     return result
+
+
+def make_T_matrix2(Atkm, tt, tk, dim):
+
+    NG = sum(tk < ttk[-1]) - 1
+    Id = np.diag(np.ones(dim))
+
+    result = np.zeros((tt.size*dim, NG*dim))
