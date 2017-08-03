@@ -45,7 +45,38 @@ class tvODE:
         return [self.odeModelObj.dXdt_xJac(x, t) for x,t in zip(sol_tk, self.ttk_mid)]
 
     def get_transformation_matrix(self, inputTimes):
-        return makeTransformation(inputTimes, self.ttk_mid, self.get_Atk(), self.dim)
+        return makeTransformation(inputTimes, self.ttk, self.get_Atk(), self.dim)
+
+
+    def get_cov(self, cScales, lScales, inputTimes):
+        Atk_mid = self.get_Atk()
+
+        ## sorts out the limits of integration for getting the covar
+        tta = []
+        ttb = []
+        Att = []
+
+        for i in range(inputTimes.size):
+
+            n = sum(self.ttk < inputTimes[i])
+            
+            tta.append(self.ttk[n-1])
+            ttb.append(inputTimes[i])
+
+            Att.append( Atk_mid[n-1] )
+
+        tta = np.concatenate(( tta, self.ttk[:-1] ))
+        ttb = np.concatenate(( ttb, self.ttk[1: ] ))
+        for a in Atk_mid[:-1]:
+            Att.append( a )
+
+        Covar = get_cov((tta, ttb), Att, cScales, lScales, self.dim)
+
+        TMat = self.get_transformation_matrix(inputTimes)
+        TMat = np.column_stack(( np.diag(np.ones(inputTimes.size*self.dim)),
+                                 TMat))
+        
+        return np.dot(TMat, np.dot(Covar, TMat.T))
 
 
 
@@ -100,9 +131,11 @@ def makeTransformation(tt, tk, Atk, dim):
 
 from core import makeCovarMat_sqExpk_specDecomp_noSens_2 as makeCov
 
-def get_cov(tt, Att,
-            cScales, lScales, dim=2, s0=0., t0=0.):
-    N = tt.size
+def get_cov(tatb, Att,
+            cScales, lScales, dim=2):
+
+    tta, ttb = tatb
+    N = tta.size
 
     result = np.zeros((N*dim, N*dim))
 
@@ -114,11 +147,11 @@ def get_cov(tt, Att,
             Beig, UB = np.linalg.eig(Att[j].T)
             UBinv = np.linalg.inv(UB)
 
-            k = makeCov(np.array(tt[i]), np.array(tt[j]),
+            k = makeCov(np.array(ttb[i]), np.array(ttb[j]),
                         (Aeig, UA, UAinv), (Beig, UB, UBinv),
-                        lScales = lScales, cScales = cScales, dim, s0, t0)
+                        lScales, cScales, dim, tta[i], tta[j])
 
-            result[i:(i+1)*dim, j:(j+1)*dim] = k
-            result[j:(j+1)*dim, i:(i+1)*dim] = k.T
+            result[i*dim:(i+1)*dim, j*dim:(j+1)*dim] = k
+            result[j*dim:(j+1)*dim, i*dim:(i+1)*dim] = k.T
 
     return result
