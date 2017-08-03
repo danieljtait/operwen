@@ -96,3 +96,29 @@ def makeTransformation(tt, tk, Atk, dim):
                 result[i*dim:(i+1)*dim, k*dim:(k+1)*dim] = np.dot(eAi, result[i*dim:(i+1)*dim, k*dim:(k+1)*dim])
             
     return result
+
+
+from core import makeCovarMat_sqExpk_specDecomp_noSens_2 as makeCov
+
+def get_cov(tt, Att,
+            cScales, lScales, dim=2, s0=0., t0=0.):
+    N = tt.size
+
+    result = np.zeros((N*dim, N*dim))
+
+    for i in range(N):
+        Aeig, UA = np.linalg.eig(Att[i])
+        UAinv = np.linalg.inv(UA)
+
+        for j in range(i+1):
+            Beig, UB = np.linalg.eig(Att[j].T)
+            UBinv = np.linalg.inv(UB)
+
+            k = makeCov(np.array(tt[i]), np.array(tt[j]),
+                        (Aeig, UA, UAinv), (Beig, UB, UBinv),
+                        lScales = lScales, cScales = cScales, dim, s0, t0)
+
+            result[i:(i+1)*dim, j:(j+1)*dim] = k
+            result[j:(j+1)*dim, i:(i+1)*dim] = k.T
+
+    return result
