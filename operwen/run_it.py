@@ -38,4 +38,68 @@ gpode = src.tvODE(tknots, odem, 2) # Construction of the ode gp object
 gpode.setup_time_vec(evalt)
 
 C = gpode.get_cov(cScales, lScales, evalt)
-print np.linalg.eig(C)[0]
+
+
+
+"""
+dim = 2
+ttk = gpode.ttk
+Att = gpode.get_Atk()
+
+tstar = 1.1
+
+Tcur = gpode.get_transformation_matrix(evalt)
+
+Tnew_row = src.makeTransformation(np.array([tstar]), ttk, Att, dim)
+if Tnew_row == []:
+    Tnew_row = np.zeros((dim, Tcur.shape[1]))
+else:
+    Tnew_row = np.column_stack((Tnew_row,
+                                np.zeros((dim, Tcur.shape[1] - Tnew_row.shape[1]))
+                                ))
+
+Tnew = np.row_stack((Tnew_row, Tcur))
+
+##
+n = sum(ttk < tstar)
+Cov_new_row = get_cov_row( ttk[n-1], tstar, Att[n-1],
+"""
+print " "
+
+
+Cnew = gpode.get_Gcov_row(evalt[0], cScales, lScales, evalt)
+#print Cnew[:, 2:8]
+#print gpode.CGG[:2,:6]
+
+
+
+CGG_cur = gpode.CGG
+TMat_cur = gpode.TMat
+
+crow_new = gpode.get_Gcov_row(1.68, cScales, lScales, evalt)
+Trow_new = gpode.get_Trow(np.array([1.68]))
+
+Tnew = np.row_stack((Trow_new, TMat_cur))
+
+TMat = np.column_stack(( np.diag(np.ones((evalt.size+1)*2)),
+                         Tnew))
+
+CGG_new = np.row_stack(( crow_new[:,2:], CGG_cur ))
+
+dim = 2
+cc = np.zeros(crow_new.shape).T
+for i in range(crow_new.shape[1]/dim):
+    cc[i*dim:(i+1)*dim, :] = crow_new[:,i*dim:(i+1)*dim].T
+
+
+CGG_new = np.column_stack(( cc, CGG_new))
+
+print "=============="
+
+res = np.dot(CGG_new, TMat.T)
+
+kk = gpode.get_kvec(1.32, cScales, lScales)
+print kk[:2,:2]
+for i in range(evalt.size):
+    print evalt[i]
+    print kk[:,(i+1)*dim:(i+2)*dim]
