@@ -296,3 +296,131 @@ def get_cov(tatb, Att,
             result[j*dim:(j+1)*dim, i*dim:(i+1)*dim] = k.T
 
     return result
+
+
+
+###
+# Attempting a rewrite of makeCov for the case at hand
+import core
+def makeCov_tv(ssb, ttb,
+               Adecompls, Bdecompls,
+               lScales, cScales,
+               dim, ssa, tta,
+               BisAT=False, AssumeEigvals_vector=False):
+    N1 = ssb.size
+    N2 = ttb.size
+
+    # expand and ravel the time vectors 
+    ssa_aug = np.column_stack(( ssa for d in range(dim) )).ravel()
+    ssb_aug = np.column_stack(( ssb for d in range(dim) )).ravel()
+
+    tta_aug = np.column_stack(( tta for d in range(dim) )).ravel()
+    ttb_aug = np.column_stack(( ttb for d in range(dim) )).ravel()
+
+    Ta_, Sa_ = np.meshgrid(tta_aug, ssa_aug)
+    Tb_, Sb_ = np.meshgrid(ttb_aug, ssb_aug)
+
+    # expand and ravel the eigenvalues
+    aeig_aug = []
+    beig_aug = []
+    for a in Adecompls:
+        aeig_aug.append(a[0])
+    aeig_aug = np.array(aeig_aug).ravel()
+    for b in Bdecompls:
+        beig_aug.append(b[0])
+    beig_aug = np.array(beig_aug).ravel()
+    eigValB, eigValA = np.meshgrid(beig_aug, aeig_aug)
+
+    ## Check for confluent eigenvalues which will throw exceptions
+    confEigVals = eigValA.ravel() + eigValB.ravel() == 0
+    if sum(confEigVals > 0):
+        isConfEigVal = True
+    else:
+        isConfEigVal = False
+
+    ####
+    PreMats = []
+    PostMats = []
+
+    for k in range(dim):
+        diagMat1 = np.diag(Adecompls[0][2][:,k]) # equivalent to np.diag( UA[0] [:,k] )
+        mat1 = np.dot(Adecompls[0][1], diagMat1)
+        pmat = mat1
+        for n in range(N1 - 1):
+            dmat = np.diag(Adecompls[n+1][2][:,k])
+            mat = np.dot(Adecompls[n+1][1], dmat)
+            pmat = scipy.linalg.block_diag( pmat, mat )
+
+        PreMats.append(pmat)
+
+        if BisAT:
+            pass
+        else:
+            diagMat = np.diag(Bdecompls[0][1][k,:])
+            mat = np.dot(diagMat, Bdecompls[0][2])
+            pomat = mat
+            for n in range(N2 - 1):
+                dmat = np.diag(Bdecompls[n+1][1][k,:])
+                mat = np.dot(diagMat, Bdecompls[n+1][2])
+                pomat = scipy.linalg.block_diag( pomat, mat )
+
+            PostMats.append(pomat)
+
+    # Matrix for storing the result
+    res = np.zeros((N1*dim, N2*dim), dtype='complex')
+
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        for k in range(dim):
+            if cScales[k] > 0 :
+                M1 = core.TwiceIntegratedSEKernel(Sb_.ravel(), Tb_.ravel(),
+                                             eigValA.ravel(), eigValB.ravel(),
+                                             lScales[k], cScales[k],
+                                             Sa_.ravel(), Ta_.ravel(), NON_ZERO_ = True)
+                if isConfEigVal:
+                    M2 = core.TwiceIntegratedSEKernel(Sb_.ravel(), Tb_.ravel(),
+                                                 eigValA.ravel(), eigValB.ravel(),
+                                                 lScales[k], cScales[k],
+                                                 Sa_.ravel(), Ta_.ravel(), ZERO_ = True)
+
+                    M1[np.isnan(M1) ] = 0.
+                    M = M1*(1-confEigVals) + M2*confEigVals
+                    M = M.reshape(res.shape)
+                else:
+                    M = M1.reshape(res.shape)
+
+                res += M
+                
+
+    return np.real(res)
+
+                
+
+def A(t):
+    return np.array([[-t, 1.],[0., -0.1*t**2]])
+
+ssa = np.array([0.0, 1.0])
+ssb = np.array([0.3, 1.3])
+tta = np.array([0.5])
+ttb = np.array([1.0])
+
+Adecompls = []
+Bdecompls = []
+for i in range(ssa.size):
+    a = A(0.5*(ssa[i] + ssb[i]))
+    Aeig, UA = np.linalg.eig(a)
+    UAinv = np.linalg.inv(UA)
+    Adecompls.append( (Aeig, UA, UAinv) )
+    Bdecompls.append( (Aeig, UAinv.T, UA.T) )
+
+ttb = ssb.copy()
+tta = ssa.copy()
+
+lScales = np.array([1., 0.5])
+cScales = np.array([0., 1.0])
+C = makeCov_tv(ssb, ttb, Adecompls, Bdecompls,
+               lScales, cScales, 2, ssa, tta)
+
+print C
+
+
