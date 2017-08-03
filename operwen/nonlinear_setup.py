@@ -47,13 +47,6 @@ class tvODE:
             # calculate the covariance
 
 
-
-
-
-
-        
-
-
 def setup_time_vecs(tmin, tmax, tknots):
     if tmin < tknots[0] or tmax > tknots[-1]:
         print "input point outside the range of knot points"

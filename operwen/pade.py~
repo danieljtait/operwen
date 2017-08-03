@@ -1,0 +1,16 @@
+import numpy as np
+
+A = np.random.uniform(size=4).reshape(2, 2)
+
+def p(A, m):
+    res = np.zeros(A.shape)
+
+    mfact = np.factorial(m)
+    twomfact = np.factorial(2*m)
+    
+    for j in range(m+1):
+        expr1 = np.factorial(2*m - j)*mfact
+        expr2 = np.factorial(m-j)*twomfact*np.factorial(j)
+        res += (expr1/expr2)*A**j
+        
+    
