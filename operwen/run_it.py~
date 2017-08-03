@@ -1,0 +1,7 @@
+
+###
+# Step 1) We need to define an ODE model
+
+def A(t):
+    return np.array([[ t, 0.],
+                     [ 1. -t**2]])

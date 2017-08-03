@@ -1,0 +1,9 @@
+import numpy as np
+
+class odeModel:
+    def __init__(self, isLinear = True):
+        self.isLinear = isLinear
+
+    def set_initCond(self, initTime, initCond):
+        self.initTime = initTime
+        self.initCond = initCond
