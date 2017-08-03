@@ -19,3 +19,20 @@ class nonlinearFrictionODE:
     def dXdt_Jac(self, X,t=0):
         return np.array([[0., 1.], [-self.gamma**2, -self.gamma**2/(self.xi*(X[1] + 1))]])
 
+
+def setup_example(tt):
+    initCond = np.array([0., 0.5, 0.8])
+
+    Tscale = 10.
+    Zscale = 0.1
+
+    ode = nonlinearFrictionODE()
+
+    def dZdt(Z, t):
+        return Zscale*Tscale*ode.dYdt(Z/Zscale, t*Tscale)
+
+    sol = odeint(dZdt, initCond*Zscale, tt)
+
+    return sol
+
+
