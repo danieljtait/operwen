@@ -343,28 +343,23 @@ def makeCov_tv(ssb, ttb,
     PostMats = []
 
     for k in range(dim):
-        diagMat1 = np.diag(Adecompls[0][2][:,k]) # equivalent to np.diag( UA[0] [:,k] )
-        mat1 = np.dot(Adecompls[0][1], diagMat1)
-        pmat = mat1
-        for n in range(N1 - 1):
-            dmat = np.diag(Adecompls[n+1][2][:,k])
-            mat = np.dot(Adecompls[n+1][1], dmat)
-            pmat = scipy.linalg.block_diag( pmat, mat )
-
-        PreMats.append(pmat)
+        diag = Adecompls[0][2][:,k]
+        for n in range(N1-1):
+            diag = np.concatenate(( diag, Adecompls[n+1][2][:,k] ))
+        pmat = np.diag(diag)
 
         if BisAT:
-            pass
+            pomat = pmat.copy()
         else:
-            diagMat = np.diag(Bdecompls[0][1][k,:])
-            mat = np.dot(diagMat, Bdecompls[0][2])
-            pomat = mat
-            for n in range(N2 - 1):
-                dmat = np.diag(Bdecompls[n+1][1][k,:])
-                mat = np.dot(diagMat, Bdecompls[n+1][2])
-                pomat = scipy.linalg.block_diag( pomat, mat )
+            diag = Bdecompls[0][1][k,:]
+            for n in range(N2-1):
+                diag = np.concatenate(( diag, Bdecompls[n+1][1][k,:] ))
+            pomat = np.diag(diag)
+            
+        PreMats.append(pmat)
+        PostMats.append(pomat)
 
-            PostMats.append(pomat)
+
 
     # Matrix for storing the result
     res = np.zeros((N1*dim, N2*dim), dtype='complex')
@@ -389,9 +384,17 @@ def makeCov_tv(ssb, ttb,
                 else:
                     M = M1.reshape(res.shape)
 
-                res += M
-                
+                res += np.dot(PreMats[k], np.dot(M, PostMats[k]))
+        
+    Pre = Adecompls[0][1]
+    for n in range(N1-1):
+        Pre = scipy.linalg.block_diag(Pre, Adecompls[n+1][1])
+    Post = Bdecompls[0][2]
+    for n in range(N2-1):
+        Post = scipy.linalg.block_diag(Post, Bdecompls[n+1][2])
 
+    res = np.dot(Pre, np.dot(res, Post))
+    
     return np.real(res)
 
                 
@@ -419,8 +422,6 @@ tta = ssa.copy()
 lScales = np.array([1., 0.5])
 cScales = np.array([0., 1.0])
 C = makeCov_tv(ssb, ttb, Adecompls, Bdecompls,
-               lScales, cScales, 2, ssa, tta)
+               lScales, cScales, 2, ssa, tta, BisAT=True)
 
 print C
-
-
